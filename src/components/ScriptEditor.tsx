@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Save, Download, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, Download, Plus, Trash2, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,10 +33,101 @@ const ScriptEditor = () => {
   const [savedScenes, setSavedScenes] = useState<Scene[]>([]);
   const [characters, setCharacters] = useState<string[]>(['JOHN', 'JANE', 'NARRATOR']);
   const [newCharacter, setNewCharacter] = useState('');
+  const [isDarkMode, setIsDarkMode] = useState(false);
   
   const sceneTypes = ['INT.', 'EXT.'];
-  const locations = ['LIVING ROOM', 'KITCHEN', 'BEDROOM', 'OFFICE', 'STREET', 'PARK', 'CAR'];
+  const locations = ['LIVING ROOM', 'KITCHEN', 'BEDROOM', 'OFFICE', 'STREET', 'PARK', 'CAR', 'HALLWAY', 'ALLEYWAY', 'BATHROOM', 'RESTAURANT', 'HOSPITAL', 'SCHOOL', 'WAREHOUSE'];
   const timeOfDay = ['DAY', 'NIGHT', 'MORNING', 'EVENING', 'CONTINUOUS'];
+
+  // Load scenes from localStorage on component mount
+  useEffect(() => {
+    const savedScenesData = localStorage.getItem('scriptEditor_scenes');
+    if (savedScenesData) {
+      try {
+        const parsedScenes = JSON.parse(savedScenesData);
+        setSavedScenes(parsedScenes);
+      } catch (error) {
+        console.error('Error loading saved scenes:', error);
+      }
+    }
+
+    const savedCharacters = localStorage.getItem('scriptEditor_characters');
+    if (savedCharacters) {
+      try {
+        const parsedCharacters = JSON.parse(savedCharacters);
+        setCharacters(parsedCharacters);
+      } catch (error) {
+        console.error('Error loading saved characters:', error);
+      }
+    }
+
+    const savedTheme = localStorage.getItem('scriptEditor_theme');
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true);
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
+  // Save scenes to localStorage whenever savedScenes changes
+  useEffect(() => {
+    if (savedScenes.length > 0) {
+      localStorage.setItem('scriptEditor_scenes', JSON.stringify(savedScenes));
+    }
+  }, [savedScenes]);
+
+  // Save characters to localStorage whenever characters changes
+  useEffect(() => {
+    localStorage.setItem('scriptEditor_characters', JSON.stringify(characters));
+  }, [characters]);
+
+  const getSceneHeadingSuggestions = (input: string) => {
+    const upperInput = input.toUpperCase();
+    const suggestions = [];
+    
+    // Check for scene type matches
+    const matchingTypes = sceneTypes.filter(type => type.startsWith(upperInput));
+    
+    // Check for location matches
+    const matchingLocations = locations.filter(location => location.includes(upperInput));
+    
+    // Combine suggestions
+    if (matchingTypes.length > 0) {
+      matchingLocations.forEach(location => {
+        matchingTypes.forEach(type => {
+          suggestions.push(`${type} ${location} - DAY`);
+          suggestions.push(`${type} ${location} - NIGHT`);
+        });
+      });
+    } else if (upperInput.startsWith('INT.') || upperInput.startsWith('EXT.')) {
+      const typePrefix = upperInput.startsWith('INT.') ? 'INT.' : 'EXT.';
+      const locationPart = upperInput.replace(typePrefix, '').trim();
+      
+      if (locationPart) {
+        const filteredLocations = locations.filter(location => 
+          location.includes(locationPart)
+        );
+        filteredLocations.forEach(location => {
+          suggestions.push(`${typePrefix} ${location} - DAY`);
+          suggestions.push(`${typePrefix} ${location} - NIGHT`);
+        });
+      }
+    }
+    
+    return suggestions.slice(0, 5); // Limit to 5 suggestions
+  };
+
+  const toggleTheme = () => {
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+    
+    if (newTheme) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('scriptEditor_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('scriptEditor_theme', 'light');
+    }
+  };
 
   const addElement = (type: ScriptElement['type']) => {
     const newElement: ScriptElement = {
@@ -160,11 +251,11 @@ const ScriptEditor = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex transition-colors">
       {/* Left Sidebar - Saved Scenes */}
-      <div className="w-64 bg-white border-r border-slate-200 p-4 overflow-y-auto">
+      <div className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-4 overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-800">Scenes</h2>
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Scenes</h2>
           <Button onClick={newScene} size="sm" variant="outline">
             <Plus className="w-4 h-4" />
           </Button>
@@ -173,17 +264,17 @@ const ScriptEditor = () => {
           {savedScenes.map((scene) => (
             <Card 
               key={scene.id} 
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer hover:shadow-md transition-shadow dark:bg-slate-700 dark:border-slate-600"
               onClick={() => loadScene(scene)}
             >
               <CardContent className="p-3">
-                <h3 className="font-medium text-sm text-slate-800 truncate">
+                <h3 className="font-medium text-sm text-slate-800 dark:text-slate-200 truncate">
                   {scene.title}
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {new Date(scene.timestamp).toLocaleDateString()}
                 </p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 dark:text-slate-500">
                   {scene.elements.length} elements
                 </p>
               </CardContent>
@@ -195,14 +286,26 @@ const ScriptEditor = () => {
       {/* Main Editor */}
       <div className="flex-1 p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
+          {/* Header with Theme Toggle */}
           <div className="mb-6">
-            <Input
-              value={currentScene.title}
-              onChange={(e) => setCurrentScene(prev => ({ ...prev, title: e.target.value }))}
-              className="text-2xl font-bold border-none text-center text-slate-800 bg-transparent"
-              placeholder="Scene Title"
-            />
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex-1">
+                <Input
+                  value={currentScene.title}
+                  onChange={(e) => setCurrentScene(prev => ({ ...prev, title: e.target.value }))}
+                  className="text-2xl font-bold border-none text-center text-slate-800 dark:text-slate-200 bg-transparent"
+                  placeholder="Scene Title"
+                />
+              </div>
+              <Button
+                onClick={toggleTheme}
+                variant="outline"
+                size="sm"
+                className="ml-4"
+              >
+                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
+            </div>
             <Separator className="mt-4" />
           </div>
 
@@ -238,7 +341,7 @@ const ScriptEditor = () => {
           </div>
 
           {/* Script Elements */}
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 min-h-96">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-8 min-h-96">
             <div className="space-y-4">
               {currentScene.elements.map((element) => (
                 <div key={element.id} className="group relative">
@@ -264,18 +367,44 @@ const ScriptEditor = () => {
                           <Textarea
                             value={element.content}
                             onChange={(e) => updateElement(element.id, e.target.value, element.character)}
-                            className={`border-slate-200 resize-none ${getElementStyle(element.type)}`}
+                            className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
                             placeholder={`Enter ${element.type}...`}
                             rows={element.type === 'scene' ? 1 : 3}
                           />
+                        </div>
+                      ) : element.type === 'scene' ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={element.content}
+                            onChange={(e) => updateElement(element.id, e.target.value)}
+                            className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
+                            placeholder="Enter scene heading (e.g., INT. LIVING ROOM - DAY)..."
+                            rows={1}
+                          />
+                          {element.content && (
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                              <p>Suggestions:</p>
+                              <div className="space-y-1 mt-1">
+                                {getSceneHeadingSuggestions(element.content).map((suggestion, index) => (
+                                  <button
+                                    key={index}
+                                    onClick={() => updateElement(element.id, suggestion)}
+                                    className="block text-left w-full px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded text-xs"
+                                  >
+                                    {suggestion}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <Textarea
                           value={element.content}
                           onChange={(e) => updateElement(element.id, e.target.value)}
-                          className={`border-slate-200 resize-none ${getElementStyle(element.type)}`}
+                          className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
                           placeholder={`Enter ${element.type}...`}
-                          rows={element.type === 'scene' ? 1 : 3}
+                          rows={3}
                         />
                       )}
                     </div>
@@ -292,7 +421,7 @@ const ScriptEditor = () => {
               ))}
               
               {currentScene.elements.length === 0 && (
-                <div className="text-center text-slate-400 py-12">
+                <div className="text-center text-slate-400 dark:text-slate-500 py-12">
                   <p>Start writing your script by adding elements above</p>
                 </div>
               )}
@@ -302,14 +431,14 @@ const ScriptEditor = () => {
       </div>
 
       {/* Right Sidebar - Quick Tools */}
-      <div className="w-64 bg-white border-l border-slate-200 p-4">
+      <div className="w-64 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 p-4">
         <div className="space-y-6">
           {/* Characters */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-800 mb-3">Characters</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Characters</h3>
             <div className="space-y-2">
               {characters.map((char) => (
-                <div key={char} className="text-sm text-slate-600 px-2 py-1 bg-slate-100 rounded">
+                <div key={char} className="text-sm text-slate-600 dark:text-slate-300 px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded">
                   {char}
                 </div>
               ))}
@@ -318,7 +447,7 @@ const ScriptEditor = () => {
                   value={newCharacter}
                   onChange={(e) => setNewCharacter(e.target.value)}
                   placeholder="Add character"
-                  className="text-sm"
+                  className="text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                   onKeyPress={(e) => e.key === 'Enter' && addCharacter()}
                 />
                 <Button onClick={addCharacter} size="sm" variant="outline">
@@ -330,7 +459,7 @@ const ScriptEditor = () => {
 
           {/* Scene Types */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-800 mb-3">Scene Headings</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Scene Headings</h3>
             <div className="space-y-2">
               <Select>
                 <SelectTrigger className="text-sm">
@@ -369,7 +498,7 @@ const ScriptEditor = () => {
 
           {/* Quick Actions */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-800 mb-3">Quick Actions</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Quick Actions</h3>
             <div className="space-y-2">
               <Button onClick={saveScene} variant="outline" size="sm" className="w-full">
                 <Save className="w-4 h-4 mr-2" />
