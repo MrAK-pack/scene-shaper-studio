@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Save, Download, Plus, Trash2, Moon, Sun } from 'lucide-react';
+import { Save, Download, Plus, Trash2, Moon, Sun, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -187,6 +186,15 @@ const ScriptEditor = () => {
     });
   };
 
+  const refreshScene = () => {
+    setCurrentScene({
+      id: Date.now().toString(),
+      title: 'New Scene',
+      elements: [],
+      timestamp: new Date().toISOString()
+    });
+  };
+
   const addCharacter = () => {
     if (newCharacter.trim() && !characters.includes(newCharacter.toUpperCase())) {
       setCharacters(prev => [...prev, newCharacter.toUpperCase()]);
@@ -286,9 +294,18 @@ const ScriptEditor = () => {
       {/* Main Editor */}
       <div className="flex-1 p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Header with Theme Toggle */}
+          {/* Header with Refresh and Theme Toggle */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
+              <Button
+                onClick={refreshScene}
+                variant="outline"
+                size="sm"
+                className="mr-4"
+              >
+                <RefreshCcw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
               <div className="flex-1">
                 <Input
                   value={currentScene.title}
@@ -347,29 +364,27 @@ const ScriptEditor = () => {
                 <div key={element.id} className="group relative">
                   <div className="flex items-start gap-2">
                     <div className="flex-1">
-                      {element.type === 'character' || element.type === 'dialogue' || element.type === 'parenthetical' ? (
+                      {(element.type === 'dialogue' || element.type === 'parenthetical') ? (
                         <div className="space-y-2">
-                          {(element.type === 'dialogue' || element.type === 'parenthetical') && (
-                            <Select
-                              value={element.character}
-                              onValueChange={(value) => updateElement(element.id, element.content, value)}
-                            >
-                              <SelectTrigger className="w-48 mx-auto">
-                                <SelectValue placeholder="Select character" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {characters.map((char) => (
-                                  <SelectItem key={char} value={char}>{char}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
+                          <Select
+                            value={element.character}
+                            onValueChange={(value) => updateElement(element.id, element.content, value)}
+                          >
+                            <SelectTrigger className="w-48 mx-auto">
+                              <SelectValue placeholder="Select character" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {characters.map((char) => (
+                                <SelectItem key={char} value={char}>{char}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <Textarea
                             value={element.content}
                             onChange={(e) => updateElement(element.id, e.target.value, element.character)}
                             className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
                             placeholder={`Enter ${element.type}...`}
-                            rows={element.type === 'scene' ? 1 : 3}
+                            rows={3}
                           />
                         </div>
                       ) : element.type === 'scene' ? (
@@ -404,7 +419,7 @@ const ScriptEditor = () => {
                           onChange={(e) => updateElement(element.id, e.target.value)}
                           className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
                           placeholder={`Enter ${element.type}...`}
-                          rows={3}
+                          rows={element.type === 'character' ? 1 : 3}
                         />
                       )}
                     </div>
