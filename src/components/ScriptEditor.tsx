@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 
 interface ScriptElement {
   id: string;
@@ -258,10 +259,192 @@ const ScriptEditor = () => {
     }
   };
 
+  const deleteCharacter = (characterToDelete: string) => {
+    setCharacters(prev => prev.filter(char => char !== characterToDelete));
+    
+    // Update any elements that were using this character
+    setCurrentScene(prev => ({
+      ...prev,
+      elements: prev.elements.map(el => 
+        el.character === characterToDelete 
+          ? { ...el, character: characters.filter(char => char !== characterToDelete)[0] || '' }
+          : el
+      )
+    }));
+  };
+
+  const addSceneHeading = () => {
+    const newElement: ScriptElement = {
+      id: Date.now().toString(),
+      type: 'scene',
+      content: '',
+    };
+    
+    setCurrentScene(prev => ({
+      ...prev,
+      elements: [...prev.elements, newElement]
+    }));
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex transition-colors">
-      {/* Left Sidebar - Saved Scenes */}
-      <div className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-4 overflow-y-auto">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col lg:flex-row transition-colors">
+      {/* Mobile/Tablet Navigation */}
+      <div className="lg:hidden flex justify-between items-center p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+        <Drawer>
+          <DrawerTrigger asChild>
+            <Button variant="outline" size="sm">
+              Scenes
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Saved Scenes</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
+              <Button onClick={newScene} size="sm" variant="outline" className="w-full mb-4">
+                <Plus className="w-4 h-4 mr-2" />
+                New Scene
+              </Button>
+              {savedScenes.map((scene) => (
+                <Card 
+                  key={scene.id} 
+                  className="cursor-pointer hover:shadow-md transition-shadow dark:bg-slate-700 dark:border-slate-600"
+                  onClick={() => loadScene(scene)}
+                >
+                  <CardContent className="p-3">
+                    <h3 className="font-medium text-sm text-slate-800 dark:text-slate-200 truncate">
+                      {scene.title}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {new Date(scene.timestamp).toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      {scene.elements.length} elements
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </DrawerContent>
+        </Drawer>
+
+        <Button
+          onClick={toggleTheme}
+          variant="outline"
+          size="sm"
+        >
+          {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </Button>
+
+        <Drawer>
+          <DrawerTrigger asChild>
+            <Button variant="outline" size="sm">
+              Tools
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Quick Tools</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4 space-y-6 max-h-80 overflow-y-auto">
+              {/* Characters */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Characters</h3>
+                <div className="space-y-2">
+                  {characters.map((char) => (
+                    <div key={char} className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300 px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded">
+                      <span>{char}</span>
+                      <Button
+                        onClick={() => deleteCharacter(char)}
+                        variant="ghost"
+                        size="sm"
+                        className="p-1 h-auto"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex gap-1">
+                    <Input
+                      value={newCharacter}
+                      onChange={(e) => setNewCharacter(e.target.value)}
+                      placeholder="Add character"
+                      className="text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                      onKeyPress={(e) => e.key === 'Enter' && addCharacter()}
+                    />
+                    <Button onClick={addCharacter} size="sm" variant="outline">
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scene Types */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Scene Headings</h3>
+                <div className="space-y-2">
+                  <Select>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Interior/Exterior" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sceneTypes.map((type) => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((location) => (
+                        <SelectItem key={location} value={location}>{location}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Time of Day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeOfDay.map((time) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Button onClick={addSceneHeading} variant="outline" size="sm" className="w-full">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Scene Heading
+                  </Button>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Quick Actions</h3>
+                <div className="space-y-2">
+                  <Button onClick={saveScene} variant="outline" size="sm" className="w-full">
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Scene
+                  </Button>
+                  <Button onClick={exportScript} variant="outline" size="sm" className="w-full">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export Script
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
+      </div>
+
+      {/* Desktop Left Sidebar - Saved Scenes */}
+      <div className="hidden lg:block w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-4 overflow-y-auto">
+        {/* Left Sidebar - Saved Scenes */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Scenes</h2>
           <Button onClick={newScene} size="sm" variant="outline">
@@ -292,7 +475,7 @@ const ScriptEditor = () => {
       </div>
 
       {/* Main Editor */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 lg:p-6">
         <div className="max-w-4xl mx-auto">
           {/* Header with Refresh and Theme Toggle */}
           <div className="mb-6">
@@ -301,16 +484,16 @@ const ScriptEditor = () => {
                 onClick={refreshScene}
                 variant="outline"
                 size="sm"
-                className="mr-4"
+                className="mr-2 lg:mr-4"
               >
                 <RefreshCcw className="w-4 h-4 mr-2" />
-                Refresh
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
-              <div className="flex-1">
+              <div className="flex-1 mx-2">
                 <Input
                   value={currentScene.title}
                   onChange={(e) => setCurrentScene(prev => ({ ...prev, title: e.target.value }))}
-                  className="text-2xl font-bold border-none text-center text-slate-800 dark:text-slate-200 bg-transparent"
+                  className="text-xl lg:text-2xl font-bold border-none text-center text-slate-800 dark:text-slate-200 bg-transparent"
                   placeholder="Scene Title"
                 />
               </div>
@@ -318,7 +501,7 @@ const ScriptEditor = () => {
                 onClick={toggleTheme}
                 variant="outline"
                 size="sm"
-                className="ml-4"
+                className="ml-2 lg:ml-4 hidden lg:flex"
               >
                 {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
@@ -327,38 +510,38 @@ const ScriptEditor = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="mb-6 flex flex-wrap justify-center gap-2">
-            <Button onClick={() => addElement('scene')} variant="outline" size="sm">
+          <div className="mb-6 flex flex-wrap justify-center gap-1 lg:gap-2">
+            <Button onClick={() => addElement('scene')} variant="outline" size="sm" className="text-xs lg:text-sm">
               Scene Heading
             </Button>
-            <Button onClick={() => addElement('action')} variant="outline" size="sm">
+            <Button onClick={() => addElement('action')} variant="outline" size="sm" className="text-xs lg:text-sm">
               Action
             </Button>
-            <Button onClick={() => addElement('character')} variant="outline" size="sm">
+            <Button onClick={() => addElement('character')} variant="outline" size="sm" className="text-xs lg:text-sm">
               Character
             </Button>
-            <Button onClick={() => addElement('dialogue')} variant="outline" size="sm">
+            <Button onClick={() => addElement('dialogue')} variant="outline" size="sm" className="text-xs lg:text-sm">
               Dialogue
             </Button>
-            <Button onClick={() => addElement('parenthetical')} variant="outline" size="sm">
+            <Button onClick={() => addElement('parenthetical')} variant="outline" size="sm" className="text-xs lg:text-sm">
               Parenthetical
             </Button>
-            <Button onClick={() => addElement('transition')} variant="outline" size="sm">
+            <Button onClick={() => addElement('transition')} variant="outline" size="sm" className="text-xs lg:text-sm">
               Transition
             </Button>
-            <Separator orientation="vertical" className="h-8" />
-            <Button onClick={saveScene} variant="default" size="sm">
-              <Save className="w-4 h-4 mr-2" />
+            <Separator orientation="vertical" className="h-8 hidden lg:block" />
+            <Button onClick={saveScene} variant="default" size="sm" className="text-xs lg:text-sm">
+              <Save className="w-4 h-4 mr-1 lg:mr-2" />
               Save
             </Button>
-            <Button onClick={exportScript} variant="default" size="sm">
-              <Download className="w-4 h-4 mr-2" />
+            <Button onClick={exportScript} variant="default" size="sm" className="text-xs lg:text-sm">
+              <Download className="w-4 h-4 mr-1 lg:mr-2" />
               Export
             </Button>
           </div>
 
           {/* Script Elements */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-8 min-h-96">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 lg:p-8 min-h-96">
             <div className="space-y-4">
               {currentScene.elements.map((element) => (
                 <div key={element.id} className="group relative">
@@ -445,16 +628,24 @@ const ScriptEditor = () => {
         </div>
       </div>
 
-      {/* Right Sidebar - Quick Tools */}
-      <div className="w-64 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 p-4">
+      {/* Desktop Right Sidebar - Quick Tools */}
+      <div className="hidden lg:block w-64 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 p-4">
         <div className="space-y-6">
           {/* Characters */}
           <div>
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Characters</h3>
             <div className="space-y-2">
               {characters.map((char) => (
-                <div key={char} className="text-sm text-slate-600 dark:text-slate-300 px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded">
-                  {char}
+                <div key={char} className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300 px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded">
+                  <span>{char}</span>
+                  <Button
+                    onClick={() => deleteCharacter(char)}
+                    variant="ghost"
+                    size="sm"
+                    className="p-1 h-auto"
+                  >
+                    <Trash2 className="w-3 h-3 text-red-500" />
+                  </Button>
                 </div>
               ))}
               <div className="flex gap-1">
@@ -508,6 +699,11 @@ const ScriptEditor = () => {
                   ))}
                 </SelectContent>
               </Select>
+              
+              <Button onClick={addSceneHeading} variant="outline" size="sm" className="w-full">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Scene Heading
+              </Button>
             </div>
           </div>
 
