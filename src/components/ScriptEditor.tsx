@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Save, Download, Plus, Trash2, Moon, Sun, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,11 @@ const ScriptEditor = () => {
   const [characters, setCharacters] = useState<string[]>(['JOHN', 'JANE', 'NARRATOR']);
   const [newCharacter, setNewCharacter] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // Scene heading dropdown states
+  const [selectedSceneType, setSelectedSceneType] = useState<string>('');
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [selectedTimeOfDay, setSelectedTimeOfDay] = useState<string>('');
   
   const sceneTypes = ['INT.', 'EXT.'];
   const locations = ['LIVING ROOM', 'KITCHEN', 'BEDROOM', 'OFFICE', 'STREET', 'PARK', 'CAR', 'HALLWAY', 'ALLEYWAY', 'BATHROOM', 'RESTAURANT', 'HOSPITAL', 'SCHOOL', 'WAREHOUSE'];
@@ -274,16 +280,34 @@ const ScriptEditor = () => {
   };
 
   const addSceneHeading = () => {
+    let sceneHeadingContent = '';
+    
+    // Build scene heading from selected dropdown values
+    if (selectedSceneType && selectedLocation && selectedTimeOfDay) {
+      sceneHeadingContent = `${selectedSceneType} ${selectedLocation} - ${selectedTimeOfDay}`;
+    } else if (selectedSceneType && selectedLocation) {
+      sceneHeadingContent = `${selectedSceneType} ${selectedLocation} - DAY`;
+    } else if (selectedSceneType) {
+      sceneHeadingContent = `${selectedSceneType} LOCATION - DAY`;
+    } else {
+      sceneHeadingContent = 'INT. LOCATION - DAY';
+    }
+    
     const newElement: ScriptElement = {
       id: Date.now().toString(),
       type: 'scene',
-      content: '',
+      content: sceneHeadingContent,
     };
     
     setCurrentScene(prev => ({
       ...prev,
       elements: [...prev.elements, newElement]
     }));
+    
+    // Reset dropdown selections after adding
+    setSelectedSceneType('');
+    setSelectedLocation('');
+    setSelectedTimeOfDay('');
   };
 
   return (
@@ -383,7 +407,7 @@ const ScriptEditor = () => {
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Scene Headings</h3>
                 <div className="space-y-2">
-                  <Select>
+                  <Select value={selectedSceneType} onValueChange={setSelectedSceneType}>
                     <SelectTrigger className="text-sm">
                       <SelectValue placeholder="Interior/Exterior" />
                     </SelectTrigger>
@@ -394,7 +418,7 @@ const ScriptEditor = () => {
                     </SelectContent>
                   </Select>
                   
-                  <Select>
+                  <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                     <SelectTrigger className="text-sm">
                       <SelectValue placeholder="Location" />
                     </SelectTrigger>
@@ -405,7 +429,7 @@ const ScriptEditor = () => {
                     </SelectContent>
                   </Select>
                   
-                  <Select>
+                  <Select value={selectedTimeOfDay} onValueChange={setSelectedTimeOfDay}>
                     <SelectTrigger className="text-sm">
                       <SelectValue placeholder="Time of Day" />
                     </SelectTrigger>
@@ -667,7 +691,7 @@ const ScriptEditor = () => {
           <div>
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Scene Headings</h3>
             <div className="space-y-2">
-              <Select>
+              <Select value={selectedSceneType} onValueChange={setSelectedSceneType}>
                 <SelectTrigger className="text-sm">
                   <SelectValue placeholder="Interior/Exterior" />
                 </SelectTrigger>
@@ -678,7 +702,7 @@ const ScriptEditor = () => {
                 </SelectContent>
               </Select>
               
-              <Select>
+              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                 <SelectTrigger className="text-sm">
                   <SelectValue placeholder="Location" />
                 </SelectTrigger>
@@ -689,7 +713,7 @@ const ScriptEditor = () => {
                 </SelectContent>
               </Select>
               
-              <Select>
+              <Select value={selectedTimeOfDay} onValueChange={setSelectedTimeOfDay}>
                 <SelectTrigger className="text-sm">
                   <SelectValue placeholder="Time of Day" />
                 </SelectTrigger>
