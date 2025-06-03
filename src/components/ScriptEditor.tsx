@@ -309,114 +309,162 @@ const ScriptEditor = () => {
     setSelectedTimeOfDay('');
   };
 
-  const generateAIScript = () => {
-    const sampleScriptElements: ScriptElement[] = [
-      {
-        id: Date.now().toString(),
-        type: 'scene',
-        content: 'INT. COFFEE SHOP - DAY'
-      },
-      {
-        id: (Date.now() + 1).toString(),
-        type: 'action',
-        content: 'A bustling coffee shop filled with the aroma of freshly brewed coffee. SARAH, a young writer in her late twenties, sits at a corner table with her laptop open, typing furiously.'
-      },
-      {
-        id: (Date.now() + 2).toString(),
-        type: 'character',
-        content: 'SARAH'
-      },
-      {
-        id: (Date.now() + 3).toString(),
-        type: 'dialogue',
-        content: 'I need more inspiration for this story.',
-        character: 'SARAH'
-      },
-      {
-        id: (Date.now() + 4).toString(),
-        type: 'action',
-        content: 'The bell above the door chimes as JACK, a charming man in his thirties, enters. He approaches the counter and notices Sarah struggling with her writing.'
-      },
-      {
-        id: (Date.now() + 5).toString(),
-        type: 'character',
-        content: 'JACK'
-      },
-      {
-        id: (Date.now() + 6).toString(),
-        type: 'dialogue',
-        content: 'Excuse me, I couldn\'t help but notice you look like you\'re wrestling with something important.',
-        character: 'JACK'
-      },
-      {
-        id: (Date.now() + 7).toString(),
-        type: 'action',
-        content: 'Sarah looks up, surprised but intrigued by the stranger\'s friendly demeanor.'
-      },
-      {
-        id: (Date.now() + 8).toString(),
-        type: 'character',
-        content: 'SARAH'
-      },
-      {
-        id: (Date.now() + 9).toString(),
-        type: 'dialogue',
-        content: 'Just trying to write the perfect scene. Sometimes the words just don\'t come.',
-        character: 'SARAH'
-      },
-      {
-        id: (Date.now() + 10).toString(),
-        type: 'character',
-        content: 'JACK'
-      },
-      {
-        id: (Date.now() + 11).toString(),
-        type: 'parenthetical',
-        content: 'sitting down across from her',
-        character: 'JACK'
-      },
-      {
-        id: (Date.now() + 12).toString(),
-        type: 'dialogue',
-        content: 'Mind if I share something? Sometimes the best stories come from unexpected conversations.',
-        character: 'JACK'
-      },
-      {
-        id: (Date.now() + 13).toString(),
-        type: 'action',
-        content: 'Sarah closes her laptop slightly, giving Jack her full attention. There\'s a spark of curiosity in her eyes.'
-      },
-      {
-        id: (Date.now() + 14).toString(),
-        type: 'character',
-        content: 'SARAH'
-      },
-      {
-        id: (Date.now() + 15).toString(),
-        type: 'dialogue',
-        content: 'I\'m listening.',
-        character: 'SARAH'
-      },
-      {
-        id: (Date.now() + 16).toString(),
-        type: 'transition',
-        content: 'FADE TO BLACK.'
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateAIScript = async () => {
+    setIsGenerating(true);
+    
+    try {
+      // Generate a random story prompt
+      const genres = ['drama', 'comedy', 'thriller', 'romance', 'sci-fi', 'mystery'];
+      const settings = ['coffee shop', 'hospital', 'office building', 'park', 'apartment', 'school', 'restaurant', 'library'];
+      const conflicts = ['unexpected meeting', 'difficult decision', 'hidden secret revealed', 'misunderstanding', 'life-changing news', 'reunion'];
+      
+      const randomGenre = genres[Math.floor(Math.random() * genres.length)];
+      const randomSetting = settings[Math.floor(Math.random() * settings.length)];
+      const randomConflict = conflicts[Math.floor(Math.random() * conflicts.length)];
+      
+      const prompt = `Write a short ${randomGenre} script scene set in a ${randomSetting} involving ${randomConflict}. Include scene heading, action lines, character names, and dialogue. Keep it under 300 words.`;
+
+      // Use OpenAI API to generate the script
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY || 'your-api-key-here'}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a professional screenwriter. Generate a properly formatted script with clear scene headings (INT./EXT. LOCATION - TIME), action lines, character names in caps, and dialogue. Keep it concise and engaging.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 800,
+          temperature: 0.8
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate script');
       }
-    ];
 
-    // Add JACK and SARAH to characters if they don't exist
-    setCharacters(prev => {
-      const newChars = [...prev];
-      if (!newChars.includes('SARAH')) newChars.push('SARAH');
-      if (!newChars.includes('JACK')) newChars.push('JACK');
-      return newChars;
-    });
+      const data = await response.json();
+      const generatedScript = data.choices[0].message.content;
 
-    setCurrentScene(prev => ({
-      ...prev,
-      title: 'AI Generated Coffee Shop Scene',
-      elements: sampleScriptElements
-    }));
+      // Parse the generated script into elements
+      const lines = generatedScript.split('\n').filter(line => line.trim());
+      const scriptElements: ScriptElement[] = [];
+      const newCharacters = new Set<string>();
+
+      lines.forEach((line, index) => {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) return;
+
+        let elementType: ScriptElement['type'] = 'action';
+        let content = trimmedLine;
+        let character: string | undefined;
+
+        // Detect scene headings
+        if (trimmedLine.match(/^(INT\.|EXT\.)/i)) {
+          elementType = 'scene';
+        }
+        // Detect character names (all caps, centered)
+        else if (trimmedLine.match(/^[A-Z][A-Z\s]+$/) && trimmedLine.length < 30) {
+          elementType = 'character';
+          newCharacters.add(trimmedLine);
+        }
+        // Detect dialogue (follows character)
+        else if (scriptElements.length > 0 && scriptElements[scriptElements.length - 1].type === 'character') {
+          elementType = 'dialogue';
+          character = scriptElements[scriptElements.length - 1].content;
+        }
+        // Detect parentheticals
+        else if (trimmedLine.startsWith('(') && trimmedLine.endsWith(')')) {
+          elementType = 'parenthetical';
+          content = trimmedLine.slice(1, -1);
+          if (scriptElements.length > 0) {
+            const lastCharacterElement = [...scriptElements].reverse().find(el => el.type === 'character');
+            character = lastCharacterElement?.content;
+          }
+        }
+        // Detect transitions
+        else if (trimmedLine.match(/(FADE IN|FADE OUT|CUT TO|DISSOLVE TO):/i)) {
+          elementType = 'transition';
+        }
+
+        scriptElements.push({
+          id: (Date.now() + index).toString(),
+          type: elementType,
+          content,
+          character
+        });
+      });
+
+      // Add new characters to the character list
+      setCharacters(prev => {
+        const updated = [...prev];
+        newCharacters.forEach(char => {
+          if (!updated.includes(char)) {
+            updated.push(char);
+          }
+        });
+        return updated;
+      });
+
+      // Update the current scene
+      setCurrentScene(prev => ({
+        ...prev,
+        title: `AI Generated ${randomGenre.charAt(0).toUpperCase() + randomGenre.slice(1)} Scene`,
+        elements: scriptElements
+      }));
+
+    } catch (error) {
+      console.error('Error generating script:', error);
+      // Fallback to sample script if API fails
+      const sampleScriptElements: ScriptElement[] = [
+        {
+          id: Date.now().toString(),
+          type: 'scene',
+          content: 'INT. COFFEE SHOP - DAY'
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          type: 'action',
+          content: 'A bustling coffee shop filled with the aroma of freshly brewed coffee. SARAH, a young writer in her late twenties, sits at a corner table with her laptop open, typing furiously.'
+        },
+        {
+          id: (Date.now() + 2).toString(),
+          type: 'character',
+          content: 'SARAH'
+        },
+        {
+          id: (Date.now() + 3).toString(),
+          type: 'dialogue',
+          content: 'I need more inspiration for this story.',
+          character: 'SARAH'
+        }
+      ];
+
+      setCharacters(prev => {
+        const newChars = [...prev];
+        if (!newChars.includes('SARAH')) newChars.push('SARAH');
+        return newChars;
+      });
+
+      setCurrentScene(prev => ({
+        ...prev,
+        title: 'Sample Coffee Shop Scene',
+        elements: sampleScriptElements
+      }));
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -609,8 +657,8 @@ const ScriptEditor = () => {
       {/* Main Editor */}
       <div className="flex-1 p-4 lg:p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Header with AI Generator, Refresh and Theme Toggle */}
-          <div className="mb-6">
+          {/* Sticky Header with AI Generator, Refresh and Theme Toggle */}
+          <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 pb-4 mb-2">
             <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
                 <Button
@@ -625,10 +673,20 @@ const ScriptEditor = () => {
                   onClick={generateAIScript}
                   variant="outline"
                   size="sm"
-                  className="bg-gradient-to-r from-purple-500 to-blue-600 text-white border-none hover:from-purple-600 hover:to-blue-700"
+                  disabled={isGenerating}
+                  className="bg-gradient-to-r from-purple-500 to-blue-600 text-white border-none hover:from-purple-600 hover:to-blue-700 disabled:opacity-50"
                 >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">AI Script</span>
+                  {isGenerating ? (
+                    <>
+                      <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                      <span className="hidden sm:inline">Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      <span className="hidden sm:inline">AI Script</span>
+                    </>
+                  )}
                 </Button>
               </div>
               <div className="flex-1 mx-2">
@@ -651,35 +709,37 @@ const ScriptEditor = () => {
             <Separator className="mt-4" />
           </div>
 
-          {/* Action Buttons */}
-          <div className="mb-6 flex flex-wrap justify-center gap-1 lg:gap-2">
-            <Button onClick={() => addElement('scene')} variant="outline" size="sm" className="text-xs lg:text-sm">
-              Scene Heading
-            </Button>
-            <Button onClick={() => addElement('action')} variant="outline" size="sm" className="text-xs lg:text-sm">
-              Action
-            </Button>
-            <Button onClick={() => addElement('character')} variant="outline" size="sm" className="text-xs lg:text-sm">
-              Character
-            </Button>
-            <Button onClick={() => addElement('dialogue')} variant="outline" size="sm" className="text-xs lg:text-sm">
-              Dialogue
-            </Button>
-            <Button onClick={() => addElement('parenthetical')} variant="outline" size="sm" className="text-xs lg:text-sm">
-              Parenthetical
-            </Button>
-            <Button onClick={() => addElement('transition')} variant="outline" size="sm" className="text-xs lg:text-sm">
-              Transition
-            </Button>
-            <Separator orientation="vertical" className="h-8 hidden lg:block" />
-            <Button onClick={saveScene} variant="default" size="sm" className="text-xs lg:text-sm">
-              <Save className="w-4 h-4 mr-1 lg:mr-2" />
-              Save
-            </Button>
-            <Button onClick={exportScript} variant="default" size="sm" className="text-xs lg:text-sm">
-              <Download className="w-4 h-4 mr-1 lg:mr-2" />
-              Export
-            </Button>
+          {/* Sticky Action Buttons */}
+          <div className="sticky top-20 z-10 bg-slate-50 dark:bg-slate-900 pb-4 mb-6">
+            <div className="flex flex-wrap justify-center gap-1 lg:gap-2">
+              <Button onClick={() => addElement('scene')} variant="outline" size="sm" className="text-xs lg:text-sm">
+                Scene Heading
+              </Button>
+              <Button onClick={() => addElement('action')} variant="outline" size="sm" className="text-xs lg:text-sm">
+                Action
+              </Button>
+              <Button onClick={() => addElement('character')} variant="outline" size="sm" className="text-xs lg:text-sm">
+                Character
+              </Button>
+              <Button onClick={() => addElement('dialogue')} variant="outline" size="sm" className="text-xs lg:text-sm">
+                Dialogue
+              </Button>
+              <Button onClick={() => addElement('parenthetical')} variant="outline" size="sm" className="text-xs lg:text-sm">
+                Parenthetical
+              </Button>
+              <Button onClick={() => addElement('transition')} variant="outline" size="sm" className="text-xs lg:text-sm">
+                Transition
+              </Button>
+              <Separator orientation="vertical" className="h-8 hidden lg:block" />
+              <Button onClick={saveScene} variant="default" size="sm" className="text-xs lg:text-sm">
+                <Save className="w-4 h-4 mr-1 lg:mr-2" />
+                Save
+              </Button>
+              <Button onClick={exportScript} variant="default" size="sm" className="text-xs lg:text-sm">
+                <Download className="w-4 h-4 mr-1 lg:mr-2" />
+                Export
+              </Button>
+            </div>
           </div>
 
           {/* Script Elements */}
