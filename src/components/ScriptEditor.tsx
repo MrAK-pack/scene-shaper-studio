@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Download, Plus, Trash2, Moon, Sun, RefreshCcw, Sparkles } from 'lucide-react';
+import { Save, Download, Plus, Trash2, Moon, Sun, RefreshCcw, Sparkles, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,6 +84,24 @@ const ScriptEditor = () => {
   useEffect(() => {
     localStorage.setItem('scriptEditor_characters', JSON.stringify(characters));
   }, [characters]);
+
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+
+  // Load API key from localStorage on component mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('scriptEditor_apiKey');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+  }, []);
+
+  // Save API key to localStorage whenever it changes
+  useEffect(() => {
+    if (apiKey) {
+      localStorage.setItem('scriptEditor_apiKey', apiKey);
+    }
+  }, [apiKey]);
 
   const getSceneHeadingSuggestions = (input: string) => {
     const upperInput = input.toUpperCase();
@@ -312,6 +330,11 @@ const ScriptEditor = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const generateAIScript = async () => {
+    if (!apiKey.trim()) {
+      setShowApiKeyInput(true);
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
@@ -331,7 +354,7 @@ const ScriptEditor = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY || 'your-api-key-here'}`
+          'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
           model: 'gpt-3.5-turbo',
@@ -469,6 +492,32 @@ const ScriptEditor = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col lg:flex-row transition-colors">
+      {/* API Key Input Modal */}
+      {showApiKeyInput && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4 text-slate-800 dark:text-slate-200">
+              Enter OpenAI API Key
+            </h3>
+            <Input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk-..."
+              className="mb-4"
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowApiKeyInput(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => setShowApiKeyInput(false)} disabled={!apiKey.trim()}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile/Tablet Navigation */}
       <div className="lg:hidden flex justify-between items-center p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
         <Drawer>
@@ -657,7 +706,7 @@ const ScriptEditor = () => {
       {/* Main Editor */}
       <div className="flex-1 p-4 lg:p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Sticky Header with AI Generator, Refresh and Theme Toggle */}
+          {/* Sticky Header with AI Generator, API Key, Refresh and Theme Toggle */}
           <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 pb-4 mb-2">
             <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
@@ -687,6 +736,14 @@ const ScriptEditor = () => {
                       <span className="hidden sm:inline">AI Script</span>
                     </>
                   )}
+                </Button>
+                <Button
+                  onClick={() => setShowApiKeyInput(true)}
+                  variant="outline"
+                  size="sm"
+                  title="Set OpenAI API Key"
+                >
+                  <Key className="w-4 h-4" />
                 </Button>
               </div>
               <div className="flex-1 mx-2">
