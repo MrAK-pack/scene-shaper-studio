@@ -87,6 +87,7 @@ const ScriptEditor = () => {
 
   const [apiKey, setApiKey] = useState('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   // Load API key from localStorage on component mount
   useEffect(() => {
@@ -332,10 +333,12 @@ const ScriptEditor = () => {
   const generateAIScript = async () => {
     if (!apiKey.trim()) {
       setShowApiKeyInput(true);
+      setApiError('Please enter your OpenAI API key to use the AI script generator.');
       return;
     }
 
     setIsGenerating(true);
+    setApiError('');
     
     try {
       // Generate a random story prompt
@@ -349,6 +352,8 @@ const ScriptEditor = () => {
       
       const prompt = `Write a short ${randomGenre} script scene set in a ${randomSetting} involving ${randomConflict}. Include scene heading, action lines, character names, and dialogue. Keep it under 300 words.`;
 
+      console.log('Generating AI script with prompt:', prompt);
+
       // Use OpenAI API to generate the script
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -357,7 +362,7 @@ const ScriptEditor = () => {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -373,11 +378,28 @@ const ScriptEditor = () => {
         })
       });
 
+      console.log('API Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to generate script');
+        const errorData = await response.json();
+        console.error('API Error:', errorData);
+        
+        if (response.status === 429) {
+          throw new Error('Your OpenAI API quota has been exceeded. Please check your billing details at platform.openai.com.');
+        } else if (response.status === 401) {
+          throw new Error('Invalid API key. Please check your OpenAI API key.');
+        } else {
+          throw new Error(`API Error: ${errorData.error?.message || 'Unknown error'}`);
+        }
       }
 
       const data = await response.json();
+      console.log('Generated script data:', data);
+
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid response format from OpenAI API');
+      }
+
       const generatedScript = data.choices[0].message.content;
 
       // Parse the generated script into elements
@@ -447,8 +469,12 @@ const ScriptEditor = () => {
         elements: scriptElements
       }));
 
+      console.log('Successfully generated and parsed script');
+
     } catch (error) {
       console.error('Error generating script:', error);
+      setApiError(error instanceof Error ? error.message : 'Failed to generate script. Please try again.');
+      
       // Fallback to sample script if API fails
       const sampleScriptElements: ScriptElement[] = [
         {
@@ -499,6 +525,11 @@ const ScriptEditor = () => {
             <h3 className="text-lg font-semibold mb-4 text-slate-800 dark:text-slate-200">
               Enter OpenAI API Key
             </h3>
+            {apiError && (
+              <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded text-sm">
+                {apiError}
+              </div>
+            )}
             <Input
               type="password"
               value={apiKey}
@@ -506,11 +537,20 @@ const ScriptEditor = () => {
               placeholder="sk-..."
               className="mb-4"
             />
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">platform.openai.com</a>
+            </div>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowApiKeyInput(false)}>
+              <Button variant="outline" onClick={() => {
+                setShowApiKeyInput(false);
+                setApiError('');
+              }}>
                 Cancel
               </Button>
-              <Button onClick={() => setShowApiKeyInput(false)} disabled={!apiKey.trim()}>
+              <Button onClick={() => {
+                setShowApiKeyInput(false);
+                setApiError('');
+              }} disabled={!apiKey.trim()}>
                 Save
               </Button>
             </div>
@@ -774,9 +814,6 @@ const ScriptEditor = () => {
               </Button>
               <Button onClick={() => addElement('action')} variant="outline" size="sm" className="text-xs lg:text-sm">
                 Action
-              </Button>
-              <Button onClick={() => addElement('character')} variant="outline" size="sm" className="text-xs lg:text-sm">
-                Character
               </Button>
               <Button onClick={() => addElement('dialogue')} variant="outline" size="sm" className="text-xs lg:text-sm">
                 Dialogue
