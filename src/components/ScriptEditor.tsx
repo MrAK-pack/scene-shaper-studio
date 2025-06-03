@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Save, Download, Plus, Trash2, Moon, Sun, RefreshCcw } from 'lucide-react';
+import { Save, Download, Plus, Trash2, Moon, Sun, RefreshCcw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -310,6 +309,116 @@ const ScriptEditor = () => {
     setSelectedTimeOfDay('');
   };
 
+  const generateAIScript = () => {
+    const sampleScriptElements: ScriptElement[] = [
+      {
+        id: Date.now().toString(),
+        type: 'scene',
+        content: 'INT. COFFEE SHOP - DAY'
+      },
+      {
+        id: (Date.now() + 1).toString(),
+        type: 'action',
+        content: 'A bustling coffee shop filled with the aroma of freshly brewed coffee. SARAH, a young writer in her late twenties, sits at a corner table with her laptop open, typing furiously.'
+      },
+      {
+        id: (Date.now() + 2).toString(),
+        type: 'character',
+        content: 'SARAH'
+      },
+      {
+        id: (Date.now() + 3).toString(),
+        type: 'dialogue',
+        content: 'I need more inspiration for this story.',
+        character: 'SARAH'
+      },
+      {
+        id: (Date.now() + 4).toString(),
+        type: 'action',
+        content: 'The bell above the door chimes as JACK, a charming man in his thirties, enters. He approaches the counter and notices Sarah struggling with her writing.'
+      },
+      {
+        id: (Date.now() + 5).toString(),
+        type: 'character',
+        content: 'JACK'
+      },
+      {
+        id: (Date.now() + 6).toString(),
+        type: 'dialogue',
+        content: 'Excuse me, I couldn\'t help but notice you look like you\'re wrestling with something important.',
+        character: 'JACK'
+      },
+      {
+        id: (Date.now() + 7).toString(),
+        type: 'action',
+        content: 'Sarah looks up, surprised but intrigued by the stranger\'s friendly demeanor.'
+      },
+      {
+        id: (Date.now() + 8).toString(),
+        type: 'character',
+        content: 'SARAH'
+      },
+      {
+        id: (Date.now() + 9).toString(),
+        type: 'dialogue',
+        content: 'Just trying to write the perfect scene. Sometimes the words just don\'t come.',
+        character: 'SARAH'
+      },
+      {
+        id: (Date.now() + 10).toString(),
+        type: 'character',
+        content: 'JACK'
+      },
+      {
+        id: (Date.now() + 11).toString(),
+        type: 'parenthetical',
+        content: 'sitting down across from her',
+        character: 'JACK'
+      },
+      {
+        id: (Date.now() + 12).toString(),
+        type: 'dialogue',
+        content: 'Mind if I share something? Sometimes the best stories come from unexpected conversations.',
+        character: 'JACK'
+      },
+      {
+        id: (Date.now() + 13).toString(),
+        type: 'action',
+        content: 'Sarah closes her laptop slightly, giving Jack her full attention. There\'s a spark of curiosity in her eyes.'
+      },
+      {
+        id: (Date.now() + 14).toString(),
+        type: 'character',
+        content: 'SARAH'
+      },
+      {
+        id: (Date.now() + 15).toString(),
+        type: 'dialogue',
+        content: 'I\'m listening.',
+        character: 'SARAH'
+      },
+      {
+        id: (Date.now() + 16).toString(),
+        type: 'transition',
+        content: 'FADE TO BLACK.'
+      }
+    ];
+
+    // Add JACK and SARAH to characters if they don't exist
+    setCharacters(prev => {
+      const newChars = [...prev];
+      if (!newChars.includes('SARAH')) newChars.push('SARAH');
+      if (!newChars.includes('JACK')) newChars.push('JACK');
+      return newChars;
+    });
+
+    setCurrentScene(prev => ({
+      ...prev,
+      title: 'AI Generated Coffee Shop Scene',
+      elements: sampleScriptElements
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col lg:flex-row transition-colors">
       {/* Mobile/Tablet Navigation */}
@@ -468,7 +577,6 @@ const ScriptEditor = () => {
 
       {/* Desktop Left Sidebar - Saved Scenes */}
       <div className="hidden lg:block w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-4 overflow-y-auto">
-        {/* Left Sidebar - Saved Scenes */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Scenes</h2>
           <Button onClick={newScene} size="sm" variant="outline">
@@ -501,18 +609,28 @@ const ScriptEditor = () => {
       {/* Main Editor */}
       <div className="flex-1 p-4 lg:p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Header with Refresh and Theme Toggle */}
+          {/* Header with AI Generator, Refresh and Theme Toggle */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
-              <Button
-                onClick={refreshScene}
-                variant="outline"
-                size="sm"
-                className="mr-2 lg:mr-4"
-              >
-                <RefreshCcw className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Refresh</span>
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={refreshScene}
+                  variant="outline"
+                  size="sm"
+                >
+                  <RefreshCcw className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Refresh</span>
+                </Button>
+                <Button
+                  onClick={generateAIScript}
+                  variant="outline"
+                  size="sm"
+                  className="bg-gradient-to-r from-purple-500 to-blue-600 text-white border-none hover:from-purple-600 hover:to-blue-700"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">AI Script</span>
+                </Button>
+              </div>
               <div className="flex-1 mx-2">
                 <Input
                   value={currentScene.title}
@@ -644,7 +762,7 @@ const ScriptEditor = () => {
               
               {currentScene.elements.length === 0 && (
                 <div className="text-center text-slate-400 dark:text-slate-500 py-12">
-                  <p>Start writing your script by adding elements above</p>
+                  <p>Start writing your script by adding elements above or try the AI Script Generator</p>
                 </div>
               )}
             </div>
