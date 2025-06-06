@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
+import jsPDF from 'jspdf';
 
 interface ScriptElement {
   id: string;
@@ -228,40 +229,113 @@ const ScriptEditor = () => {
   };
 
   const exportScript = () => {
-    let scriptContent = `TITLE: ${currentScene.title}\n\n`;
-    
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const lineHeight = 6;
+    let yPosition = margin;
+
+    // Set font for the entire document
+    pdf.setFont('courier');
+
+    // Add title
+    pdf.setFontSize(16);
+    pdf.setFont('courier', 'bold');
+    const title = currentScene.title.toUpperCase();
+    const titleWidth = pdf.getTextWidth(title);
+    pdf.text(title, (pageWidth - titleWidth) / 2, yPosition);
+    yPosition += lineHeight * 3;
+
+    // Reset font for script content
+    pdf.setFont('courier', 'normal');
+    pdf.setFontSize(12);
+
     currentScene.elements.forEach(element => {
+      // Check if we need a new page
+      if (yPosition > pageHeight - margin) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      let text = '';
+      let fontSize = 12;
+      let fontStyle = 'normal';
+      let alignment: 'left' | 'center' | 'right' = 'left';
+      let leftMargin = margin;
+
       switch (element.type) {
         case 'scene':
-          scriptContent += `${element.content}\n\n`;
+          text = element.content.toUpperCase();
+          fontStyle = 'bold';
+          alignment = 'left';
+          yPosition += lineHeight;
           break;
         case 'action':
-          scriptContent += `${element.content}\n\n`;
+          text = element.content;
+          alignment = 'left';
           break;
         case 'character':
-          scriptContent += `                    ${element.content}\n`;
+          text = element.content.toUpperCase();
+          fontStyle = 'bold';
+          alignment = 'center';
+          yPosition += lineHeight;
           break;
         case 'dialogue':
-          scriptContent += `          ${element.content}\n\n`;
+          text = element.content;
+          leftMargin = margin + 40; // Indent dialogue
           break;
         case 'parenthetical':
-          scriptContent += `                    (${element.content})\n`;
+          text = `(${element.content})`;
+          leftMargin = margin + 30; // Slight indent for parentheticals
+          fontStyle = 'italic';
           break;
         case 'transition':
-          scriptContent += `                                        ${element.content}\n\n`;
+          text = element.content.toUpperCase();
+          fontStyle = 'bold';
+          alignment = 'right';
+          yPosition += lineHeight;
           break;
+      }
+
+      // Set font style
+      pdf.setFont('courier', fontStyle as any);
+
+      // Split long text into multiple lines
+      const maxWidth = pageWidth - (leftMargin + margin);
+      const splitText = pdf.splitTextToSize(text, maxWidth);
+
+      // Handle different alignments
+      splitText.forEach((line: string, index: number) => {
+        let xPosition = leftMargin;
+        
+        if (alignment === 'center') {
+          const textWidth = pdf.getTextWidth(line);
+          xPosition = (pageWidth - textWidth) / 2;
+        } else if (alignment === 'right') {
+          const textWidth = pdf.getTextWidth(line);
+          xPosition = pageWidth - textWidth - margin;
+        }
+
+        pdf.text(line, xPosition, yPosition);
+        yPosition += lineHeight;
+
+        // Check for page break within multi-line text
+        if (yPosition > pageHeight - margin && index < splitText.length - 1) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+      });
+
+      // Add extra spacing after certain elements
+      if (element.type === 'scene' || element.type === 'action' || element.type === 'transition') {
+        yPosition += lineHeight;
       }
     });
 
-    const blob = new Blob([scriptContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentScene.title.replace(/\s+/g, '_')}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Save the PDF
+    const fileName = `${currentScene.title.replace(/\s+/g, '_')}.pdf`;
+    pdf.save(fileName);
   };
 
   const getElementStyle = (type: string) => {
