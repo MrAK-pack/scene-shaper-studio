@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Download, Plus, Trash2, Moon, Sun, RefreshCcw, Sparkles, Key } from 'lucide-react';
+import { Save, Download, Plus, Trash2, Moon, Sun, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -86,25 +86,6 @@ const ScriptEditor = () => {
   useEffect(() => {
     localStorage.setItem('scriptEditor_characters', JSON.stringify(characters));
   }, [characters]);
-
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
-  const [apiError, setApiError] = useState('');
-
-  // Load API key from localStorage on component mount
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem('scriptEditor_apiKey');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
-  }, []);
-
-  // Save API key to localStorage whenever it changes
-  useEffect(() => {
-    if (apiKey) {
-      localStorage.setItem('scriptEditor_apiKey', apiKey);
-    }
-  }, [apiKey]);
 
   const getSceneHeadingSuggestions = (input: string) => {
     const upperInput = input.toUpperCase();
@@ -403,236 +384,8 @@ const ScriptEditor = () => {
     setSelectedTimeOfDay('');
   };
 
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const generateAIScript = async () => {
-    if (!apiKey.trim()) {
-      setShowApiKeyInput(true);
-      setApiError('Please enter your OpenAI API key to use the AI script generator.');
-      return;
-    }
-
-    setIsGenerating(true);
-    setApiError('');
-    
-    try {
-      // Generate a random story prompt
-      const genres = ['drama', 'comedy', 'thriller', 'romance', 'sci-fi', 'mystery'];
-      const settings = ['coffee shop', 'hospital', 'office building', 'park', 'apartment', 'school', 'restaurant', 'library'];
-      const conflicts = ['unexpected meeting', 'difficult decision', 'hidden secret revealed', 'misunderstanding', 'life-changing news', 'reunion'];
-      
-      const randomGenre = genres[Math.floor(Math.random() * genres.length)];
-      const randomSetting = settings[Math.floor(Math.random() * settings.length)];
-      const randomConflict = conflicts[Math.floor(Math.random() * conflicts.length)];
-      
-      const prompt = `Write a short ${randomGenre} script scene set in a ${randomSetting} involving ${randomConflict}. Include scene heading, action lines, character names, and dialogue. Keep it under 300 words.`;
-
-      console.log('Generating AI script with prompt:', prompt);
-
-      // Use OpenAI API to generate the script
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a professional screenwriter. Generate a properly formatted script with clear scene headings (INT./EXT. LOCATION - TIME), action lines, character names in caps, and dialogue. Keep it concise and engaging.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: 800,
-          temperature: 0.8
-        })
-      });
-
-      console.log('API Response status:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API Error:', errorData);
-        
-        if (response.status === 429) {
-          throw new Error('Your OpenAI API quota has been exceeded. Please check your billing details at platform.openai.com.');
-        } else if (response.status === 401) {
-          throw new Error('Invalid API key. Please check your OpenAI API key.');
-        } else {
-          throw new Error(`API Error: ${errorData.error?.message || 'Unknown error'}`);
-        }
-      }
-
-      const data = await response.json();
-      console.log('Generated script data:', data);
-
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error('Invalid response format from OpenAI API');
-      }
-
-      const generatedScript = data.choices[0].message.content;
-
-      // Parse the generated script into elements
-      const lines = generatedScript.split('\n').filter(line => line.trim());
-      const scriptElements: ScriptElement[] = [];
-      const newCharacters = new Set<string>();
-
-      lines.forEach((line, index) => {
-        const trimmedLine = line.trim();
-        if (!trimmedLine) return;
-
-        let elementType: ScriptElement['type'] = 'action';
-        let content = trimmedLine;
-        let character: string | undefined;
-
-        // Detect scene headings
-        if (trimmedLine.match(/^(INT\.|EXT\.)/i)) {
-          elementType = 'scene';
-        }
-        // Detect character names (all caps, centered)
-        else if (trimmedLine.match(/^[A-Z][A-Z\s]+$/) && trimmedLine.length < 30) {
-          elementType = 'character';
-          newCharacters.add(trimmedLine);
-        }
-        // Detect dialogue (follows character)
-        else if (scriptElements.length > 0 && scriptElements[scriptElements.length - 1].type === 'character') {
-          elementType = 'dialogue';
-          character = scriptElements[scriptElements.length - 1].content;
-        }
-        // Detect parentheticals
-        else if (trimmedLine.startsWith('(') && trimmedLine.endsWith(')')) {
-          elementType = 'parenthetical';
-          content = trimmedLine.slice(1, -1);
-          if (scriptElements.length > 0) {
-            const lastCharacterElement = [...scriptElements].reverse().find(el => el.type === 'character');
-            character = lastCharacterElement?.content;
-          }
-        }
-        // Detect transitions
-        else if (trimmedLine.match(/(FADE IN|FADE OUT|CUT TO|DISSOLVE TO):/i)) {
-          elementType = 'transition';
-        }
-
-        scriptElements.push({
-          id: (Date.now() + index).toString(),
-          type: elementType,
-          content,
-          character
-        });
-      });
-
-      // Add new characters to the character list
-      setCharacters(prev => {
-        const updated = [...prev];
-        newCharacters.forEach(char => {
-          if (!updated.includes(char)) {
-            updated.push(char);
-          }
-        });
-        return updated;
-      });
-
-      // Update the current scene
-      setCurrentScene(prev => ({
-        ...prev,
-        title: `AI Generated ${randomGenre.charAt(0).toUpperCase() + randomGenre.slice(1)} Scene`,
-        elements: scriptElements
-      }));
-
-      console.log('Successfully generated and parsed script');
-
-    } catch (error) {
-      console.error('Error generating script:', error);
-      setApiError(error instanceof Error ? error.message : 'Failed to generate script. Please try again.');
-      
-      // Fallback to sample script if API fails
-      const sampleScriptElements: ScriptElement[] = [
-        {
-          id: Date.now().toString(),
-          type: 'scene',
-          content: 'INT. COFFEE SHOP - DAY'
-        },
-        {
-          id: (Date.now() + 1).toString(),
-          type: 'action',
-          content: 'A bustling coffee shop filled with the aroma of freshly brewed coffee. SARAH, a young writer in her late twenties, sits at a corner table with her laptop open, typing furiously.'
-        },
-        {
-          id: (Date.now() + 2).toString(),
-          type: 'character',
-          content: 'SARAH'
-        },
-        {
-          id: (Date.now() + 3).toString(),
-          type: 'dialogue',
-          content: 'I need more inspiration for this story.',
-          character: 'SARAH'
-        }
-      ];
-
-      setCharacters(prev => {
-        const newChars = [...prev];
-        if (!newChars.includes('SARAH')) newChars.push('SARAH');
-        return newChars;
-      });
-
-      setCurrentScene(prev => ({
-        ...prev,
-        title: 'Sample Coffee Shop Scene',
-        elements: sampleScriptElements
-      }));
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   return (
     <div className="h-screen bg-slate-50 dark:bg-slate-900 flex flex-col lg:flex-row transition-colors overflow-hidden">
-      {/* API Key Input Modal */}
-      {showApiKeyInput && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4 text-slate-800 dark:text-slate-200">
-              Enter OpenAI API Key
-            </h3>
-            {apiError && (
-              <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded text-sm">
-                {apiError}
-              </div>
-            )}
-            <Input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
-              className="mb-4"
-            />
-            <div className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">platform.openai.com</a>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => {
-                setShowApiKeyInput(false);
-                setApiError('');
-              }}>
-                Cancel
-              </Button>
-              <Button onClick={() => {
-                setShowApiKeyInput(false);
-                setApiError('');
-              }} disabled={!apiKey.trim()}>
-                Save
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Mobile/Tablet Navigation */}
       <div className="lg:hidden flex justify-between items-center p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
         <Drawer>
@@ -835,33 +588,6 @@ const ScriptEditor = () => {
                   <RefreshCcw className="w-4 h-4 mr-2" />
                   <span className="hidden sm:inline">Refresh</span>
                 </Button>
-                <Button
-                  onClick={generateAIScript}
-                  variant="outline"
-                  size="sm"
-                  disabled={isGenerating}
-                  className="bg-gradient-to-r from-purple-500 to-blue-600 text-white border-none hover:from-purple-600 hover:to-blue-700 disabled:opacity-50"
-                >
-                  {isGenerating ? (
-                    <>
-                      <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
-                      <span className="hidden sm:inline">Generating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      <span className="hidden sm:inline">AI Script</span>
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={() => setShowApiKeyInput(true)}
-                  variant="outline"
-                  size="sm"
-                  title="Set OpenAI API Key"
-                >
-                  <Key className="w-4 h-4" />
-                </Button>
               </div>
               <div className="flex-1 mx-2">
                 <Input
@@ -997,7 +723,7 @@ const ScriptEditor = () => {
                   
                   {currentScene.elements.length === 0 && (
                     <div className="text-center text-slate-400 dark:text-slate-500 py-12">
-                      <p>Start writing your script by adding elements above or try the AI Script Generator</p>
+                      <p>Start writing your script by adding elements above</p>
                     </div>
                   )}
                 </div>
