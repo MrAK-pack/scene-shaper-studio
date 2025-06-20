@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import jsPDF from 'jspdf';
 
 interface ScriptElement {
@@ -591,7 +592,7 @@ const ScriptEditor = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col lg:flex-row transition-colors">
+    <div className="h-screen bg-slate-50 dark:bg-slate-900 flex flex-col lg:flex-row transition-colors overflow-hidden">
       {/* API Key Input Modal */}
       {showApiKeyInput && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -786,42 +787,44 @@ const ScriptEditor = () => {
         </Drawer>
       </div>
 
-      {/* Desktop Left Sidebar - Saved Scenes */}
-      <div className="hidden lg:block w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-4 overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Scenes</h2>
-          <Button onClick={newScene} size="sm" variant="outline">
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-        <div className="space-y-2">
-          {savedScenes.map((scene) => (
-            <Card 
-              key={scene.id} 
-              className="cursor-pointer hover:shadow-md transition-shadow dark:bg-slate-700 dark:border-slate-600"
-              onClick={() => loadScene(scene)}
-            >
-              <CardContent className="p-3">
-                <h3 className="font-medium text-sm text-slate-800 dark:text-slate-200 truncate">
-                  {scene.title}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {new Date(scene.timestamp).toLocaleDateString()}
-                </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  {scene.elements.length} elements
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      {/* Desktop Left Sidebar - Fixed */}
+      <div className="hidden lg:block w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-shrink-0">
+        <ScrollArea className="h-full p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Scenes</h2>
+            <Button onClick={newScene} size="sm" variant="outline">
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {savedScenes.map((scene) => (
+              <Card 
+                key={scene.id} 
+                className="cursor-pointer hover:shadow-md transition-shadow dark:bg-slate-700 dark:border-slate-600"
+                onClick={() => loadScene(scene)}
+              >
+                <CardContent className="p-3">
+                  <h3 className="font-medium text-sm text-slate-800 dark:text-slate-200 truncate">
+                    {scene.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {new Date(scene.timestamp).toLocaleDateString()}
+                  </p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    {scene.elements.length} elements
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </ScrollArea>
       </div>
 
-      {/* Main Editor */}
-      <div className="flex-1 p-4 lg:p-6">
-        <div className="max-w-4xl mx-auto">
-          {/* Sticky Header with AI Generator, API Key, Refresh and Theme Toggle */}
-          <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 pb-4 mb-2">
+      {/* Main Editor - Scrollable */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Fixed Header */}
+        <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 p-4 lg:p-6 flex-shrink-0">
+          <div className="max-w-4xl mx-auto">
             <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
                 <Button
@@ -877,11 +880,10 @@ const ScriptEditor = () => {
                 {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
             </div>
-            <Separator className="mt-4" />
-          </div>
-
-          {/* Sticky Action Buttons */}
-          <div className="sticky top-20 z-10 bg-slate-50 dark:bg-slate-900 pb-4 mb-6">
+            
+            <Separator className="mb-4" />
+            
+            {/* Action Buttons */}
             <div className="flex flex-wrap justify-center gap-1 lg:gap-2">
               <Button onClick={() => addElement('scene')} variant="outline" size="sm" className="text-xs lg:text-sm">
                 Scene Heading
@@ -909,189 +911,198 @@ const ScriptEditor = () => {
               </Button>
             </div>
           </div>
+        </div>
 
-          {/* Script Elements */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 lg:p-8 min-h-96">
-            <div className="space-y-4">
-              {currentScene.elements.map((element) => (
-                <div key={element.id} className="group relative">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1">
-                      {(element.type === 'dialogue' || element.type === 'parenthetical') ? (
-                        <div className="space-y-2">
-                          <Select
-                            value={element.character}
-                            onValueChange={(value) => updateElement(element.id, element.content, value)}
-                          >
-                            <SelectTrigger className="w-48 mx-auto">
-                              <SelectValue placeholder="Select character" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {characters.map((char) => (
-                                <SelectItem key={char} value={char}>{char}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Textarea
-                            value={element.content}
-                            onChange={(e) => updateElement(element.id, e.target.value, element.character)}
-                            className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
-                            placeholder={`Enter ${element.type}...`}
-                            rows={3}
-                          />
-                        </div>
-                      ) : element.type === 'scene' ? (
-                        <div className="space-y-2">
-                          <Textarea
-                            value={element.content}
-                            onChange={(e) => updateElement(element.id, e.target.value)}
-                            className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
-                            placeholder="Enter scene heading (e.g., INT. LIVING ROOM - DAY)..."
-                            rows={1}
-                          />
-                          {element.content && (
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              <p>Suggestions:</p>
-                              <div className="space-y-1 mt-1">
-                                {getSceneHeadingSuggestions(element.content).map((suggestion, index) => (
-                                  <button
-                                    key={index}
-                                    onClick={() => updateElement(element.id, suggestion)}
-                                    className="block text-left w-full px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded text-xs"
-                                  >
-                                    {suggestion}
-                                  </button>
-                                ))}
-                              </div>
+        {/* Scrollable Content Area */}
+        <ScrollArea className="flex-1">
+          <div className="p-4 lg:p-6">
+            <div className="max-w-4xl mx-auto">
+              {/* Script Elements */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 lg:p-8 min-h-96">
+                <div className="space-y-4">
+                  {currentScene.elements.map((element) => (
+                    <div key={element.id} className="group relative">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1">
+                          {(element.type === 'dialogue' || element.type === 'parenthetical') ? (
+                            <div className="space-y-2">
+                              <Select
+                                value={element.character}
+                                onValueChange={(value) => updateElement(element.id, element.content, value)}
+                              >
+                                <SelectTrigger className="w-48 mx-auto">
+                                  <SelectValue placeholder="Select character" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {characters.map((char) => (
+                                    <SelectItem key={char} value={char}>{char}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Textarea
+                                value={element.content}
+                                onChange={(e) => updateElement(element.id, e.target.value, element.character)}
+                                className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
+                                placeholder={`Enter ${element.type}...`}
+                                rows={3}
+                              />
                             </div>
+                          ) : element.type === 'scene' ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={element.content}
+                                onChange={(e) => updateElement(element.id, e.target.value)}
+                                className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
+                                placeholder="Enter scene heading (e.g., INT. LIVING ROOM - DAY)..."
+                                rows={1}
+                              />
+                              {element.content && (
+                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                                  <p>Suggestions:</p>
+                                  <div className="space-y-1 mt-1">
+                                    {getSceneHeadingSuggestions(element.content).map((suggestion, index) => (
+                                      <button
+                                        key={index}
+                                        onClick={() => updateElement(element.id, suggestion)}
+                                        className="block text-left w-full px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded text-xs"
+                                      >
+                                        {suggestion}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <Textarea
+                              value={element.content}
+                              onChange={(e) => updateElement(element.id, e.target.value)}
+                              className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
+                              placeholder={`Enter ${element.type}...`}
+                              rows={element.type === 'character' ? 1 : 3}
+                            />
                           )}
                         </div>
-                      ) : (
-                        <Textarea
-                          value={element.content}
-                          onChange={(e) => updateElement(element.id, e.target.value)}
-                          className={`border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 resize-none ${getElementStyle(element.type)}`}
-                          placeholder={`Enter ${element.type}...`}
-                          rows={element.type === 'character' ? 1 : 3}
-                        />
-                      )}
+                        <Button
+                          onClick={() => deleteElement(element.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      onClick={() => deleteElement(element.id)}
-                      variant="ghost"
-                      size="sm"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  </div>
+                  ))}
+                  
+                  {currentScene.elements.length === 0 && (
+                    <div className="text-center text-slate-400 dark:text-slate-500 py-12">
+                      <p>Start writing your script by adding elements above or try the AI Script Generator</p>
+                    </div>
+                  )}
                 </div>
-              ))}
-              
-              {currentScene.elements.length === 0 && (
-                <div className="text-center text-slate-400 dark:text-slate-500 py-12">
-                  <p>Start writing your script by adding elements above or try the AI Script Generator</p>
-                </div>
-              )}
+              </div>
             </div>
           </div>
-        </div>
+        </ScrollArea>
       </div>
 
-      {/* Desktop Right Sidebar - Quick Tools */}
-      <div className="hidden lg:block w-64 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 p-4">
-        <div className="space-y-6">
-          {/* Characters */}
-          <div>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Characters</h3>
-            <div className="space-y-2">
-              {characters.map((char) => (
-                <div key={char} className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300 px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded">
-                  <span>{char}</span>
-                  <Button
-                    onClick={() => deleteCharacter(char)}
-                    variant="ghost"
-                    size="sm"
-                    className="p-1 h-auto"
-                  >
-                    <Trash2 className="w-3 h-3 text-red-500" />
+      {/* Desktop Right Sidebar - Fixed */}
+      <div className="hidden lg:block w-64 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 flex-shrink-0">
+        <ScrollArea className="h-full p-4">
+          <div className="space-y-6">
+            {/* Characters */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Characters</h3>
+              <div className="space-y-2">
+                {characters.map((char) => (
+                  <div key={char} className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300 px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded">
+                    <span>{char}</span>
+                    <Button
+                      onClick={() => deleteCharacter(char)}
+                      variant="ghost"
+                      size="sm"
+                      className="p-1 h-auto"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+                <div className="flex gap-1">
+                  <Input
+                    value={newCharacter}
+                    onChange={(e) => setNewCharacter(e.target.value)}
+                    placeholder="Add character"
+                    className="text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                    onKeyPress={(e) => e.key === 'Enter' && addCharacter()}
+                  />
+                  <Button onClick={addCharacter} size="sm" variant="outline">
+                    <Plus className="w-3 h-3" />
                   </Button>
                 </div>
-              ))}
-              <div className="flex gap-1">
-                <Input
-                  value={newCharacter}
-                  onChange={(e) => setNewCharacter(e.target.value)}
-                  placeholder="Add character"
-                  className="text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
-                  onKeyPress={(e) => e.key === 'Enter' && addCharacter()}
-                />
-                <Button onClick={addCharacter} size="sm" variant="outline">
-                  <Plus className="w-3 h-3" />
+              </div>
+            </div>
+
+            {/* Scene Types */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Scene Headings</h3>
+              <div className="space-y-2">
+                <Select value={selectedSceneType} onValueChange={setSelectedSceneType}>
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder="Interior/Exterior" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sceneTypes.map((type) => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder="Location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location) => (
+                      <SelectItem key={location} value={location}>{location}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={selectedTimeOfDay} onValueChange={setSelectedTimeOfDay}>
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder="Time of Day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOfDay.map((time) => (
+                      <SelectItem key={time} value={time}>{time}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Button onClick={addSceneHeading} variant="outline" size="sm" className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Scene Heading
+                </Button>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Quick Actions</h3>
+              <div className="space-y-2">
+                <Button onClick={saveScene} variant="outline" size="sm" className="w-full">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Scene
+                </Button>
+                <Button onClick={exportScript} variant="outline" size="sm" className="w-full">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Script
                 </Button>
               </div>
             </div>
           </div>
-
-          {/* Scene Types */}
-          <div>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Scene Headings</h3>
-            <div className="space-y-2">
-              <Select value={selectedSceneType} onValueChange={setSelectedSceneType}>
-                <SelectTrigger className="text-sm">
-                  <SelectValue placeholder="Interior/Exterior" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sceneTypes.map((type) => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                <SelectTrigger className="text-sm">
-                  <SelectValue placeholder="Location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((location) => (
-                    <SelectItem key={location} value={location}>{location}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={selectedTimeOfDay} onValueChange={setSelectedTimeOfDay}>
-                <SelectTrigger className="text-sm">
-                  <SelectValue placeholder="Time of Day" />
-                </SelectTrigger>
-                <SelectContent>
-                  {timeOfDay.map((time) => (
-                    <SelectItem key={time} value={time}>{time}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Button onClick={addSceneHeading} variant="outline" size="sm" className="w-full">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Scene Heading
-              </Button>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Quick Actions</h3>
-            <div className="space-y-2">
-              <Button onClick={saveScene} variant="outline" size="sm" className="w-full">
-                <Save className="w-4 h-4 mr-2" />
-                Save Scene
-              </Button>
-              <Button onClick={exportScript} variant="outline" size="sm" className="w-full">
-                <Download className="w-4 h-4 mr-2" />
-                Export Script
-              </Button>
-            </div>
-          </div>
-        </div>
+        </ScrollArea>
       </div>
     </div>
   );
